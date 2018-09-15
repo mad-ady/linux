@@ -29,14 +29,12 @@
 #include <linux/export.h>
 #include <linux/mm.h>
 #include <linux/mm_types.h>
-#include <linux/rbtree.h>
 #include <linux/slab.h>
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 #include <linux/vmalloc.h>
 #include <linux/debugfs.h>
 #include <linux/dma-buf.h>
-#include <linux/idr.h>
 
 #include "ion.h"
 #include "ion_priv.h"
@@ -65,36 +63,6 @@ struct ion_device {
 	struct dentry *debug_root;
 	struct dentry *heaps_debug_root;
 	struct dentry *clients_debug_root;
-};
-
-/**
- * struct ion_client - a process/hw block local address space
- * @node:		node in the tree of all clients
- * @dev:		backpointer to ion device
- * @handles:		an rb tree of all the handles in this client
- * @idr:		an idr space for allocating handle ids
- * @lock:		lock protecting the tree of handles
- * @name:		used for debugging
- * @display_name:	used for debugging (unique version of @name)
- * @display_serial:	used for debugging (to make display_name unique)
- * @task:		used for debugging
- *
- * A client represents a list of buffers this client may access.
- * The mutex stored here is used to protect both handles tree
- * as well as the handles themselves, and should be held while modifying either.
- */
-struct ion_client {
-	struct rb_node node;
-	struct ion_device *dev;
-	struct rb_root handles;
-	struct idr idr;
-	struct mutex lock;
-	const char *name;
-	char *display_name;
-	int display_serial;
-	struct task_struct *task;
-	pid_t pid;
-	struct dentry *debug_root;
 };
 
 /**
@@ -407,7 +375,7 @@ static struct ion_handle *ion_handle_get_check_overflow(
 	return handle;
 }
 
-static int ion_handle_put_nolock(struct ion_handle *handle)
+int ion_handle_put_nolock(struct ion_handle *handle)
 {
 	int ret;
 
@@ -446,7 +414,7 @@ static struct ion_handle *ion_handle_lookup(struct ion_client *client,
 	return ERR_PTR(-EINVAL);
 }
 
-static struct ion_handle *ion_handle_get_by_id_nolock(struct ion_client *client,
+struct ion_handle *ion_handle_get_by_id_nolock(struct ion_client *client,
 						int id)
 {
 	struct ion_handle *handle;

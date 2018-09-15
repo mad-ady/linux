@@ -18,6 +18,9 @@
 #define _LINUX_ION_H
 
 #include <linux/types.h>
+#include <linux/rbtree.h>
+#include <linux/idr.h>
+#include <linux/mutex.h>
 
 #include "../uapi/ion.h"
 
@@ -25,8 +28,37 @@ struct ion_handle;
 struct ion_device;
 struct ion_heap;
 struct ion_mapper;
-struct ion_client;
 struct ion_buffer;
+
+/**
+ * struct ion_client - a process/hw block local address space
+ * @node:               node in the tree of all clients
+ * @dev:                backpointer to ion device
+ * @handles:            an rb tree of all the handles in this client
+ * @idr:                an idr space for allocating handle ids
+ * @lock:               lock protecting the tree of handles
+ * @name:               used for debugging
+ * @display_name:       used for debugging (unique version of @name)
+ * @display_serial:     used for debugging (to make display_name unique)
+ * @task:               used for debugging
+ *
+ * A client represents a list of buffers this client may access.
+ * The mutex stored here is used to protect both handles tree
+ * as well as the handles themselves, and should be held while modifying either.
+ */
+struct ion_client {
+        struct rb_node node;
+        struct ion_device *dev;
+        struct rb_root handles;
+        struct idr idr;
+        struct mutex lock;
+        const char *name;
+        char *display_name;
+        int display_serial;
+        struct task_struct *task;
+        pid_t pid;
+        struct dentry *debug_root;
+};
 
 /*
  * This should be removed some day when phys_addr_t's are fully
@@ -233,9 +265,9 @@ static inline void ion_unmap_iommu(struct device *iommu_dev, struct ion_client *
 
 void ion_handle_get(struct ion_handle *handle);
 
-int ion_handle_put(struct ion_handle *handle);
+int ion_handle_put_nolock(struct ion_handle *handle);
 
-struct ion_handle *ion_handle_get_by_id(struct ion_client *client,
+struct ion_handle *ion_handle_get_by_id_nolock(struct ion_client *client,
 					int id);
 
 #endif /* _LINUX_ION_H */
