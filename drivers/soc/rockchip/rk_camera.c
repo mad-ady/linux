@@ -463,12 +463,11 @@ static int sensor_power_default_cb (struct rk29camera_gpio_res *res, int on)
 	        if (on) {
 			regulator_set_voltage(ldo_28, power_pmu_voltage1, power_pmu_voltage1);
 			ret = regulator_enable(ldo_28);
-			//printk("%s set ldo7 vcc28_cif=%dmV end\n", __func__, regulator_get_voltage(ldo_28));
 			regulator_put(ldo_28);
 
 			msleep(10);
 		} else {
-			while(regulator_is_enabled(ldo_28) > 0)
+			if (regulator_is_enabled(ldo_28) > 0)
 				regulator_disable(ldo_28);
 			regulator_put(ldo_28);
 		}
@@ -480,12 +479,11 @@ static int sensor_power_default_cb (struct rk29camera_gpio_res *res, int on)
 			regulator_set_voltage(ldo_18, power_pmu_voltage2, power_pmu_voltage2);
 			//regulator_set_suspend_voltage(ldo, 1800000);
 			ret = regulator_enable(ldo_18);
-			//printk("%s set ldo1 vcc18_cif=%dmV end\n", __func__, regulator_get_voltage(ldo_18));
 			regulator_put(ldo_18);
 
 			msleep(10);
 		} else {
-			while(regulator_is_enabled(ldo_18) > 0)
+			if (regulator_is_enabled(ldo_18) > 0)
 				regulator_disable(ldo_18);
 			regulator_put(ldo_18);
 		}
@@ -584,7 +582,7 @@ static int sensor_powerdown_default_cb (struct rk29camera_gpio_res *res, int on)
 			ret = regulator_enable(powerdown_pmu);
 			regulator_put(powerdown_pmu);
 		} else {
-			while(regulator_is_enabled(powerdown_pmu) > 0)
+			if (regulator_is_enabled(powerdown_pmu) > 0)
 				regulator_disable(powerdown_pmu);
 			regulator_put(powerdown_pmu);
 		}
@@ -1018,12 +1016,12 @@ static int rk_sensor_pwrseq(struct device *dev,int powerup_sequence, int on, int
 
 	debug_printk( "/$$$$$$$$$$$$$$$$$$$$$$//n Here I am: %s:%i-------%s()\n", __FILE__, __LINE__,__FUNCTION__);
 
-	for (i=0; i<8; i++) {
+	for (i = 0; i < SENSOR_PWRSEQ_CNT; i++) {
 
 		if (on == 1)
 			powerup_type = SENSOR_PWRSEQ_GET(powerup_sequence, i);
 		else
-			powerup_type = SENSOR_PWRSEQ_GET(powerup_sequence, 7 - i);
+			powerup_type = SENSOR_PWRSEQ_GET(powerup_sequence, SENSOR_PWRSEQ_CNT - 1 - i);
 
 		switch (powerup_type)
 		{

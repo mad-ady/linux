@@ -111,6 +111,8 @@
 #define PX30_LVDS_PHY_MODE(x)		(BITS_MASK(x, 0x1, 12) | BITS_EN(0x1, 12))
 #define PX30_LVDS_MSBSEL(x)		(BITS_MASK(x, 0x1, 11) | BITS_EN(0x1, 11))
 #define PX30_DPHY_FORCERXMODE(x)	(BITS_MASK(x, 0x1,  6) | BITS_EN(0x1,  6))
+#define PX30_LCDC_DCLK_INV(v)		(BITS_MASK(x, 0x1,  4) | BITS_EN(0x1,  4))
+#define PX30_RGB_SYNC_BYPASS(x)		(BITS_MASK(x, 0x1,  3) | BITS_EN(0x1,  3))
 #define PX30_RGB_VOP_SEL(x)		(BITS_MASK(x, 0x1,  2) | BITS_EN(0x1,  2))
 #define PX30_LVDS_VOP_SEL(x)		(BITS_MASK(x, 0x1,  1) | BITS_EN(0x1,  1))
 
@@ -152,6 +154,10 @@
 
 #define MIPIPHY_REG4		0x0010
 #define v_FBDIV_LSB(x)		BITS_MASK(x, 0xff, 0)
+
+#define MIPIPHY_REG8			0x0020
+#define m_SAMPLE_CLK_DIR		BIT(4)
+#define v_SAMPLE_CLK_DIR_REVERSE	BIT(4)
 
 #define MIPIPHY_REGE0		0x0380
 #define m_MSB_SEL		BIT(0)
