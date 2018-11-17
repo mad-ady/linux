@@ -44,8 +44,8 @@
 #include "rk3328.dtsi"
 
 / {
-	model = "Pine64 Rock64";
-	compatible = "pine64,rock64", "rockchip,rk3328";
+	model = "Pine64 RockBox";
+	compatible = "pine64,rockbox", "rockchip,rk3328";
 
 	chosen {
 		bootargs = "earlyprintk=uart8250-32bit,0xff130000 swiotlb=1 kpti=0";
@@ -56,13 +56,6 @@
 		compatible = "fixed-clock";
 		clock-frequency = <32768>;
 		clock-output-names = "xin32k";
-		#clock-cells = <0>;
-	};
-
-	gmac_clkin: external-gmac-clock {
-		compatible = "fixed-clock";
-		clock-frequency = <125000000>;
-		clock-output-names = "gmac_clkin";
 		#clock-cells = <0>;
 	};
 
@@ -95,12 +88,10 @@
 		vin-supply = <&vcc_io>;
 	};
 
-	vcc_host_5v: vcc_otg_5v: vcc-host-5v-regulator {
+	vcc_host_5v: vcc_host1_5v: vcc_otg_5v: vcc-host-5v-regulator {
 		compatible = "regulator-fixed";
-		gpio = <&gpio0 RK_PA2 GPIO_ACTIVE_LOW>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&usb_host_drv>;
 		regulator-name = "vcc_host_5v";
+		regulator-always-on;
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 		vin-supply = <&vcc_sys>;
@@ -109,14 +100,10 @@
 	leds {
 		compatible = "gpio-leds";
 
-		standby-led {
-			gpios = <&rk805 0 GPIO_ACTIVE_LOW>;
-			linux,default-trigger = "heartbeat";
-		};
-
-		power-led {
-			gpios = <&rk805 1 GPIO_ACTIVE_LOW>;
-			linux,default-trigger = "mmc0";
+		power {
+			gpios = <&rk805 0 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "default-on";
+			default-state = "on";
 		};
 	};
 
@@ -126,11 +113,6 @@
 		linux,rc-map-name = "rc-pine64";
 		pinctrl-0 = <&ir_int>;
 		pinctrl-names = "default";
-	};
-
-	dummy_codec: dummy-codec {
-		compatible = "linux,snd-soc-dummy";
-		#sound-dai-cells = <0>;
 	};
 
 	hdmi-sound {
@@ -143,30 +125,6 @@
 		};
 		simple-audio-card,codec {
 			sound-dai = <&hdmi>;
-		};
-	};
-
-	sound {
-		compatible = "simple-audio-card";
-		simple-audio-card,mclk-fs = <256>;
-		simple-audio-card,name = "I2S";
-		simple-audio-card,dai-link@0 {
-			format = "i2s";
-			cpu {
-				sound-dai = <&i2s1>;
-			};
-			codec {
-				sound-dai = <&codec>;
-			};
-		};
-		simple-audio-card,dai-link@1 {
-			format = "i2s";
-			cpu {
-				sound-dai = <&i2s1>;
-			};
-			codec {
-				sound-dai = <&dummy_codec>;
-			};
 		};
 	};
 
@@ -184,6 +142,27 @@
 	spdif_out: spdif-out {
 		compatible = "linux,spdif-dit";
 		#sound-dai-cells = <0>;
+	};
+
+	sdio_pwrseq: sdio-pwrseq {
+		compatible = "mmc-pwrseq-simple";
+		pinctrl-names = "default";
+		pinctrl-0 = <&wifi_enable_h>;
+
+		/*
+		 * On the module itself this is one of these (depending
+		 * on the actual card populated):
+		 * - SDIO_RESET_L_WL_REG_ON
+		 * - PDN (power down when low)
+		 */
+		reset-gpios = <&gpio1 RK_PC2 GPIO_ACTIVE_LOW>;
+	};
+
+	wireless-wlan {
+		compatible = "wlan-platdata";
+		rockchip,grf = <&grf>;
+		wifi_chip_type = "rtl8189fs";
+		WIFI,host_wake_irq = <&gpio1 RK_PC3 GPIO_ACTIVE_HIGH>;
 	};
 };
 
@@ -234,22 +213,6 @@
 	status = "okay";
 };
 
-&gmac2io {
-	assigned-clocks = <&cru SCLK_MAC2IO>, <&cru SCLK_MAC2IO_EXT>;
-	assigned-clock-parents = <&gmac_clkin>, <&gmac_clkin>;
-	clock_in_out = "input";
-	phy-supply = <&vcc_phy>;
-	phy-mode = "rgmii";
-	pinctrl-names = "default";
-	pinctrl-0 = <&rgmiim1_pins>;
-	snps,reset-gpio = <&gpio1 RK_PC2 GPIO_ACTIVE_LOW>;
-	snps,reset-active-low;
-	snps,reset-delays-us = <0 10000 50000>;
-	tx_delay = <0x24>;
-	rx_delay = <0x18>;
-	status = "okay";
-};
-
 &gmac2phy {
 	phy-supply = <&vcc_phy>;
 	assigned-clocks = <&cru SCLK_MAC2PHY_SRC>;
@@ -257,7 +220,7 @@
 	assigned-clocks = <&cru SCLK_MAC2PHY>;
 	assigned-clock-parents = <&cru SCLK_MAC2PHY_SRC>;
 	clock_in_out = "output";
-	status = "disabled";
+	status = "okay";
 };
 
 &gpu {
@@ -435,21 +398,6 @@
 	status = "okay";
 };
 
-&i2s1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2s1_mclk
-		     &i2s1_sclk
-		     &i2s1_lrcktx
-		     &i2s1_lrckrx
-		     &i2s1_sdo
-		     &i2s1_sdi
-		     &i2s1_sdio1
-		     &i2s1_sdio2
-		     &i2s1_sdio3>;
-	#sound-dai-cells = <0>;
-	status = "okay";
-};
-
 &iep {
 	status = "okay";
 };
@@ -464,7 +412,7 @@
 	vccio1-supply = <&vcc_io>;
 	vccio2-supply = <&vcc18_emmc>;
 	vccio3-supply = <&vcc_io>;
-	vccio4-supply = <&vcc_18>;
+	vccio4-supply = <&vcc_io>;
 	vccio5-supply = <&vcc_io>;
 	vccio6-supply = <&vcc_io>;
 	pmuio-supply = <&vcc_io>;
@@ -483,9 +431,10 @@
 		};
 	};
 
-	usb {
-		usb_host_drv: usb-host-drv {
-			rockchip,pins = <0 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>;
+	sdio-pwrseq {
+		wifi_enable_h: wifi-enable-h {
+			rockchip,pins = <1 RK_PC2 RK_FUNC_GPIO &pcfg_pull_none_4ma>,
+				<1 RK_PC3 RK_FUNC_GPIO &pcfg_pull_none_4ma>;
 		};
 	};
 };
@@ -496,6 +445,21 @@
 };
 
 &rkvdec_mmu {
+	status = "okay";
+};
+
+&sdio {
+	bus-width = <4>;
+	cap-sd-highspeed;
+	cap-sdio-irq;
+	disable-wp;
+	keep-power-in-suspend;
+	mmc-pwrseq = <&sdio_pwrseq>;
+	non-removable;
+	num-slots = <1>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&sdmmc1_bus4 &sdmmc1_cmd &sdmmc1_clk>;
+	supports-sdio;
 	status = "okay";
 };
 
@@ -516,31 +480,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&spdifm0_tx>;
 	status = "okay";
-};
-
-&spi0 {
-	status = "okay";
-
-	flash@0 {
-		compatible = "jedec,spi-nor";
-		#address-cells = <1>;
-		#size-cells = <1>;
-		reg = <0>;
-		m25p,fast-read;
-		/* The max SCLK of the flash 104/80 MHZ  */
-		spi-max-frequency = <50000000>;
-
-		partitions {
-			compatible = "fixed-partitions";
-			#address-cells = <1>;
-			#size-cells = <1>;
-
-			loader@8000 {
-				label = "loader";
-				reg = <0x8000 0x3F0000>;
-			};
-		};
-	};
 };
 
 &threshold {
@@ -571,24 +510,26 @@
 };
 
 &u2phy_host {
+	phy-supply = <&vcc_host1_5v>;
 	status = "okay";
 };
 
 &u2phy_otg {
-	vbus-supply = <&vcc_otg_5v>;
+	phy-supply = <&vcc_otg_5v>;
 	status = "okay";
 };
 
 &u3phy {
-	vbus-supply = <&vcc_host_5v>;
 	status = "okay";
 };
 
 &u3phy_utmi {
+	phy-supply = <&vcc_host_5v>;
 	status = "okay";
 };
 
 &u3phy_pipe {
+	phy-supply = <&vcc_host_5v>;
 	status = "okay";
 };
 
