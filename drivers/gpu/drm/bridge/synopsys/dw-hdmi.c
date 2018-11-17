@@ -1700,7 +1700,21 @@ static void hdmi_config_AVI(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 		break;
 	}
 
-	frame.scan_mode = HDMI_SCAN_MODE_NONE;
+	frame.scan_mode = HDMI_SCAN_MODE_UNDERSCAN;
+	frame.content_type = HDMI_CONTENT_TYPE_GRAPHICS;
+	frame.itc = true;
+
+	if (hdmi_bus_fmt_is_rgb(hdmi->hdmi_data.enc_out_bus_format)) {
+		frame.colorimetry = HDMI_COLORIMETRY_NONE;
+		frame.extended_colorimetry = 0;
+		frame.quantization_range = HDMI_QUANTIZATION_RANGE_FULL;
+		frame.ycc_quantization_range = HDMI_YCC_QUANTIZATION_RANGE_FULL;
+	} else {
+		frame.quantization_range = HDMI_QUANTIZATION_RANGE_LIMITED;
+		frame.ycc_quantization_range = HDMI_YCC_QUANTIZATION_RANGE_LIMITED;
+	}
+
+	hdmi_infoframe_log(KERN_INFO, hdmi->dev, &frame);
 
 	/*
 	 * The Designware IP uses a different byte format from standard
@@ -1795,6 +1809,8 @@ static void hdmi_config_vendor_specific_infoframe(struct dw_hdmi *hdmi,
 		return;
 	}
 
+	hdmi_infoframe_log(KERN_INFO, hdmi->dev, &frame);
+
 	/* Set the length of HDMI vendor specific InfoFrame payload */
 	hdmi_writeb(hdmi, buffer[2], HDMI_FC_VSDSIZE);
 
@@ -1835,7 +1851,7 @@ static void hdmi_config_hdr_infoframe(struct dw_hdmi *hdmi)
 
 	/* Dynamic Range and Mastering Infoframe is introduced in v2.11a. */
 	if (hdmi->version < 0x211a) {
-		DRM_ERROR("Not support DRM Infoframe\n");
+		DRM_DEBUG("Not support DRM Infoframe\n");
 		return;
 	}
 
@@ -1866,7 +1882,9 @@ static void hdmi_config_hdr_infoframe(struct dw_hdmi *hdmi)
 		return;
 	}
 
-	hdmi_writeb(hdmi, 1, HDMI_FC_DRM_HB0);
+	hdmi_infoframe_log(KERN_INFO, hdmi->dev, &frame);
+
+	hdmi_writeb(hdmi, frame.version, HDMI_FC_DRM_HB0);
 	hdmi_writeb(hdmi, frame.length, HDMI_FC_DRM_HB1);
 	hdmi_writeb(hdmi, frame.eotf, HDMI_FC_DRM_PB0);
 	hdmi_writeb(hdmi, frame.metadata_type, HDMI_FC_DRM_PB1);
@@ -1999,10 +2017,6 @@ static void hdmi_av_composer(struct dw_hdmi *hdmi,
 	inv_val |= mode->flags & DRM_MODE_FLAG_INTERLACE ?
 		HDMI_FC_INVIDCONF_IN_I_P_INTERLACED :
 		HDMI_FC_INVIDCONF_IN_I_P_PROGRESSIVE;
-
-	inv_val |= hdmi->sink_is_hdmi ?
-		HDMI_FC_INVIDCONF_DVI_MODEZ_HDMI_MODE :
-		HDMI_FC_INVIDCONF_DVI_MODEZ_DVI_MODE;
 
 	hdmi_writeb(hdmi, inv_val, HDMI_FC_INVIDCONF);
 
@@ -2301,6 +2315,9 @@ static int dw_hdmi_setup(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 	/* not for DVI mode */
 	if (hdmi->sink_is_hdmi) {
 		dev_dbg(hdmi->dev, "%s HDMI mode\n", __func__);
+		hdmi_modb(hdmi, HDMI_FC_INVIDCONF_DVI_MODEZ_HDMI_MODE,
+			  HDMI_FC_INVIDCONF_DVI_MODEZ_HDMI_MODE,
+			  HDMI_FC_INVIDCONF);
 
 		/* HDMI Initialization Step F - Configure AVI InfoFrame */
 		hdmi_config_AVI(hdmi, mode);
