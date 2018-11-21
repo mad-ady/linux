@@ -1928,25 +1928,7 @@ static int rockchip_drm_platform_remove(struct platform_device *pdev)
 
 static void rockchip_drm_platform_shutdown(struct platform_device *pdev)
 {
-	struct device *dev = &pdev->dev;
-	struct drm_crtc *crtc;
-	struct drm_device *drm;
-	struct rockchip_drm_private *priv;
-
-	drm = dev_get_drvdata(dev);
-	if (!drm) {
-		DRM_ERROR("%s: Failed to get drm device!\n", __func__);
-		return;
-	}
-
-	priv = drm->dev_private;
-	drm_for_each_crtc(crtc, drm) {
-		int pipe = drm_crtc_index(crtc);
-
-		if (priv->crtc_funcs[pipe] &&
-		    priv->crtc_funcs[pipe]->crtc_close)
-			priv->crtc_funcs[pipe]->crtc_close(crtc);
-	}
+	rockchip_drm_platform_remove(pdev);
 }
 
 static const struct of_device_id rockchip_drm_dt_ids[] = {
