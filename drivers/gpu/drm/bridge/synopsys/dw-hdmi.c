@@ -1768,8 +1768,6 @@ static void hdmi_config_AVI(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 		frame.ycc_quantization_range = HDMI_YCC_QUANTIZATION_RANGE_LIMITED;
 	}
 
-	hdmi_infoframe_log(KERN_INFO, hdmi->dev, &frame);
-
 	/*
 	 * The Designware IP uses a different byte format from standard
 	 * AVI info frames, though generally the bits are in the correct
@@ -1863,8 +1861,6 @@ static void hdmi_config_vendor_specific_infoframe(struct dw_hdmi *hdmi,
 		return;
 	}
 
-	hdmi_infoframe_log(KERN_INFO, hdmi->dev, &frame);
-
 	/* Set the length of HDMI vendor specific InfoFrame payload */
 	hdmi_writeb(hdmi, buffer[2], HDMI_FC_VSDSIZE);
 
@@ -1935,8 +1931,6 @@ static void hdmi_config_hdr_infoframe(struct dw_hdmi *hdmi)
 		DRM_ERROR("couldn't set HDR metadata in infoframe\n");
 		return;
 	}
-
-	hdmi_infoframe_log(KERN_INFO, hdmi->dev, &frame);
 
 	hdmi_writeb(hdmi, frame.version, HDMI_FC_DRM_HB0);
 	hdmi_writeb(hdmi, frame.length, HDMI_FC_DRM_HB1);
