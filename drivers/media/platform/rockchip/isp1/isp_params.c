@@ -1603,15 +1603,17 @@ void rkisp1_params_isr(struct rkisp1_isp_params_vdev *params_vdev, u32 isp_mis)
 	if (!list_empty(&params_vdev->params))
 		cur_buf = list_first_entry(&params_vdev->params,
 					   struct rkisp1_buffer, queue);
-	spin_unlock(&params_vdev->config_lock);
-
-	if (!cur_buf)
+	if (!cur_buf) {
+		spin_unlock(&params_vdev->config_lock);
 		return;
+	}
 
 	new_params = (struct rkisp1_isp_params_cfg *)(cur_buf->vaddr[0]);
 
 	if (isp_mis & CIF_ISP_FRAME) {
 		u32 isp_ctrl;
+
+		list_del(&cur_buf->queue);
 
 		__isp_isr_other_config(params_vdev, new_params);
 		__isp_isr_meas_config(params_vdev, new_params);
@@ -1621,13 +1623,10 @@ void rkisp1_params_isr(struct rkisp1_isp_params_vdev *params_vdev, u32 isp_mis)
 		isp_ctrl |= CIF_ISP_CTRL_ISP_CFG_UPD;
 		rkisp1_iowrite32(params_vdev, isp_ctrl, CIF_ISP_CTRL);
 
-		spin_lock(&params_vdev->config_lock);
-		list_del(&cur_buf->queue);
-		spin_unlock(&params_vdev->config_lock);
-
 		cur_buf->vb.sequence = cur_frame_id;
 		vb2_buffer_done(&cur_buf->vb.vb2_buf, VB2_BUF_STATE_DONE);
 	}
+	spin_unlock(&params_vdev->config_lock);
 }
 
 static const struct cifisp_awb_meas_config awb_params_default_config = {
@@ -1688,7 +1687,8 @@ void rkisp1_params_config_parameter(struct rkisp1_isp_params_vdev *params_vdev)
 
 	memset(hst.hist_weight, 0x01, sizeof(hst.hist_weight));
 	ops->hst_config(params_vdev, &hst);
-	if (params_vdev->dev->isp_ver == ISP_V12) {
+	if (params_vdev->dev->isp_ver == ISP_V12 ||
+	    params_vdev->dev->isp_ver == ISP_V13) {
 		isp_param_set_bits(params_vdev, CIF_ISP_HIST_CTRL_V12,
 			   ~CIF_ISP_HIST_CTRL_MODE_MASK_V12 |
 			   hst_params_default_config.mode);
@@ -1957,7 +1957,8 @@ static void rkisp1_init_params_vdev(struct rkisp1_isp_params_vdev *params_vdev)
 	params_vdev->vdev_fmt.fmt.meta.buffersize =
 		sizeof(struct rkisp1_isp_params_cfg);
 
-	if (params_vdev->dev->isp_ver == ISP_V12) {
+	if (params_vdev->dev->isp_ver == ISP_V12 ||
+	    params_vdev->dev->isp_ver == ISP_V13) {
 		params_vdev->ops = &rkisp1_v12_isp_params_ops;
 		params_vdev->config = &rkisp1_v12_isp_params_config;
 	} else {
