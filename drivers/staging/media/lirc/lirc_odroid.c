@@ -194,6 +194,18 @@ exit_init_port:
 	return ret;
 }
 
+/* called when the character device is opened */
+static int set_use_inc(void *data)
+{
+	pr_info(LIRC_DRIVER_NAME " is opened\n");
+	return 0;
+}
+
+static void set_use_dec(void *data)
+{
+	pr_info(LIRC_DRIVER_NAME " is closed\n");
+}
+
 /*
  * Header space pulse
  * + pre_data space pulse pairs
@@ -298,8 +310,12 @@ static struct lirc_driver driver = {
 	.name		= LIRC_DRIVER_NAME,
 	.minor		= -1,
 	.code_length	= 1,
+	.sample_rate	= 0,
 	.data		= NULL,
+	.add_to_buf	= NULL,
 	.rbuf		= &rbuf,
+	.set_use_inc	= set_use_inc,
+	.set_use_dec	= set_use_dec,
 	.fops		= &lirc_fops,
 	.dev		= NULL,
 	.owner		= THIS_MODULE,
